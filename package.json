@@ -1,5 +1,9 @@
 {
   "dependencies": {
     "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.1",
+    "tslib": "^2.3.1"
   }
 }
