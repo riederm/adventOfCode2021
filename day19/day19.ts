@@ -1,6 +1,3 @@
-import { runInThisContext } from "vm";
-
-console.log("hello world");
 const sin_90 = 1;
 const cos_90 = 0;
 
@@ -157,26 +154,55 @@ function getInput() {
 
 class Scanner {
 
+    ref_vec = new Vec3D(3, 5, 7);
+
     constructor(public points: Vec3D[]) { }
 
     rotate90_x() {
         this.points.forEach(it => it.rotate90_x());
+        this.ref_vec.rotate90_x();
+        this.vecCache = new Set<String>();
     }
 
     rotate90_y() {
         this.points.forEach(it => it.rotate90_y());
+        this.ref_vec.rotate90_y();
+        this.vecCache = new Set<String>();
     }
 
     rotate90_z() {
         this.points.forEach(it => it.rotate90_z());
+        this.ref_vec.rotate90_z();
+        this.vecCache = new Set<String>();
     }
 
     getMatches(other: Scanner) {
-        return this.points.filter(it => other.points.some(o => o.eq(it)));
+        let cache = this.getCache();
+        return other.points.filter(it => cache.has(it.toString()))
     }
 
     move(delta: Vec3D) {
         this.points.forEach(it => it.move(delta));
+    }
+
+    private vecCache : Set<String> = new Set();
+    import(vecs: Vec3D[]){
+        for (const v of vecs) {
+            let vs = v.toString();
+            if (!this.vecCache.has(vs)) {
+                this.vecCache.add(vs);
+                this.points.push(v);
+            }
+        }
+    }
+
+    private getCache(){
+        if (this.vecCache.size == 0){
+            console.log("rebuild")
+            this.vecCache = new Set();
+            this.points.forEach(it => this.vecCache.add(it.toString()));
+        }
+        return this.vecCache;
     }
 }
 
@@ -251,10 +277,16 @@ class Vec3D {
  * @param candidate the candidate that whill be rotated and moved
  */
 function findMatch(reference: Scanner, candidate: Scanner): Scanner | null {
+    let checkedDirections = new Set();
     //now try all rotations
     for (let z = 0; z < 4; z++) {
         for (let y = 0; y < 4; y++) {
             for (let x = 0; x < 4; x++) {
+                if (checkedDirections.has(candidate.ref_vec.toString())) {
+                    continue; //we've already been here
+                }
+                checkedDirections.add(candidate.ref_vec.toString());
+
                 //for the current rotation, ... 
                 for (const ref_point of reference.points) {
                     for (const c_point of candidate.points) {
@@ -283,7 +315,6 @@ function findMatch(reference: Scanner, candidate: Scanner): Scanner | null {
 let scanners = getInput();
 //consider scanner 0 as known
 let known_scanner = scanners.splice(0, 1)[0];
-let all_known_points = new Set(known_scanner.points.map(it => it.toString()));
 
 let change = true;
 while (change) {
@@ -295,10 +326,7 @@ while (change) {
         if (match) {
             change = true;
             let new_known = scanners.splice(c,1)[0];
-            let new_known_points = new_known.points.filter(it => !all_known_points.has(it.toString()));
-            new_known_points.forEach(it => all_known_points.add(it.toString()));
-            console.log("YEEEEEESSS ", new_known.points.length - new_known_points.length);
-            known_scanner.points.push(...new_known_points);
+            known_scanner.import(new_known.points);
             console.log(known_scanner.points.length);
         }
     }
