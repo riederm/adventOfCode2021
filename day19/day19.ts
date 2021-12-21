@@ -156,23 +156,49 @@ function getInput() {
 }
 
 class Scanner {
+    public reference = new Vec3D(7, 3, 11);
 
     constructor(public points: Vec3D[]) { }
 
     rotate90_x() {
         this.points.forEach(it => it.rotate90_x());
+        this.reference.rotate90_x();
+        this.pointCache = null;
     }
 
     rotate90_y() {
         this.points.forEach(it => it.rotate90_y());
+        this.reference.rotate90_y();
+        this.pointCache = null;
     }
 
     rotate90_z() {
         this.points.forEach(it => it.rotate90_z());
+        this.reference.rotate90_z();
+        this.pointCache = null;
     }
 
     getMatches(other: Scanner) {
-        return this.points.filter(it => other.points.some(o => o.eq(it)));
+        let cache = this.getPointCache(); 
+        return other.points.filter(it => cache.has(it.toString()));
+    }
+
+    import(toImport: Vec3D[]){
+        let c = this.getPointCache();
+        for (const p of toImport) {
+            if (!c.has(p.toString())) {
+                this.points.push(p);
+                c.add(p.toString())
+            }
+        }
+    }
+
+    pointCache: Set<String> | null = null;
+    getPointCache() {
+        if (this.pointCache == null){
+            this.pointCache = new Set(this.points.map(it => it.toString()));
+        }
+        return this.pointCache;
     }
 
     move(delta: Vec3D) {
@@ -251,16 +277,23 @@ class Vec3D {
  * @param candidate the candidate that whill be rotated and moved
  */
 function findMatch(reference: Scanner, candidate: Scanner): Scanner | null {
+    let checkedRotations = new Set();
     //now try all rotations
     for (let z = 0; z < 4; z++) {
         for (let y = 0; y < 4; y++) {
             for (let x = 0; x < 4; x++) {
+                let rotation_reference = candidate.reference.toString();
+                if(checkedRotations.has(rotation_reference)){
+                    continue; 
+                }
+                checkedRotations.add(rotation_reference);
+
                 //for the current rotation, ... 
                 for (const ref_point of reference.points) {
                     for (const c_point of candidate.points) {
                         //move the candidate system so ref_point == c_point
                         let delta = c_point.diff(ref_point);
-                        delta.negate();
+                        // delta.negate();
                         candidate.move(delta);
                         //see how much points will match
                         let matches = reference.getMatches(candidate);
@@ -270,7 +303,6 @@ function findMatch(reference: Scanner, candidate: Scanner): Scanner | null {
                         }
                     }
                 }
-
                 candidate.rotate90_x();
             }
             candidate.rotate90_y();
@@ -280,30 +312,33 @@ function findMatch(reference: Scanner, candidate: Scanner): Scanner | null {
     return null;
 }
 
+
 let scanners = getInput();
 //consider scanner 0 as known
 let known_scanner = scanners.splice(0, 1)[0];
-let all_known_points = new Set(known_scanner.points.map(it => it.toString()));
 
 let change = true;
 while (change) {
     change = false;
+    let found = [];
     for (let c = 0; c < scanners.length; c++) {
         let candidate = scanners[c];
         //try it against all known scanners
         let match = findMatch(known_scanner, candidate);
         if (match) {
             change = true;
-            let new_known = scanners.splice(c,1)[0];
-            let new_known_points = new_known.points.filter(it => !all_known_points.has(it.toString()));
-            new_known_points.forEach(it => all_known_points.add(it.toString()));
-            console.log("YEEEEEESSS ", new_known.points.length - new_known_points.length);
-            known_scanner.points.push(...new_known_points);
-            console.log(known_scanner.points.length);
+            found.push(match);
+            known_scanner.import(match.points);
         }
+    }
+    console.log(known_scanner.points.length);
+    if (found.length > 0){
+        console.log(found.map(it => scanners.indexOf(it)))
+        found.forEach(it => scanners.splice(scanners.indexOf(it)));
+        console.log("YES - found ", found.length, ",", scanners.length, "to go")
     }
 }
 
 console.log(known_scanner.points.length);
-console.log(known_scanner.points.map(it => it.toString()).sort((a,b) => a.localeCompare(b)));
-console.log(scanners.length);
+// console.log(known_scanner.points.map(it => it.toString()).sort((a, b) => a.localeCompare(b)));
+console.log(scanners.length, "could not be matched!!!");
