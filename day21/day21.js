@@ -70,21 +70,22 @@ function play(players, lvl, n) {
         }
     }
 
-    let level_wins = [0, 0];
 
     if (!memory[lvl]){
+        let level_points = [];
         for (let t = 0; t < dirac_die.length; t++) {
+            old_pos = current_player.pos;
+            old_points = current_player.points;
             current_player.pos += dirac_die[t];
-            let branch_wins = play(players, lvl+1, n+1);
-            current_player.pos -= dirac_die[t];
-
-            level_wins[0] += branch_wins[0];
-            level_wins[1] += branch_wins[1];
+            level_points.push(play(players, lvl+1, n+1));
+            current_player.pos = old_pos;
+            current_player.points = old_points;
         }
         //keep track of this level
-        memory[lvl] = [...level_wins];
+        memory[lvl] = [...level_points];
+        return level_points;
     }else{
-        level_wins = memory[lvl];
+        return memory[lvl];
     }
     
     return level_wins;
